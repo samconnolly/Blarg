@@ -1,0 +1,18 @@
+<! The main page, showing the blog entries >
+{% extends "layout.html" %}
+{% block body %}
+<ul class=entries>
+<h2>Staged entries<h2>
+<form action="{{ url_for('submit_staged') }}" method=post class=add-entry>
+<dl>
+{% for entry in entries %}
+<li><h2>{{ entry.title }}</h2><h3>{{ entry.time }}</h3><br>{{ entry.text|safe }}
+<dt>Score:<input type=text size=5 name=score>
+<dd><input type=submit value=Submit {{entry.time}}>
+{% else %}
+<li><em>Unbelievable. No entries here so far</em>
+{% endfor %}
+</dl>
+</form>
+</ul>
+{% endblock %}
