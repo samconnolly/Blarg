@@ -1,0 +1,29 @@
+<! The main page, showing the blog entries >
+{% extends "layout.html" %}
+{% block body %}
+{% if session.logged_in %}
+<form action="{{ url_for('add_account') }}" method=post class=add-account>
+<dl>
+<h2>Add new account:</h2><br>
+<dt>Username:
+<dd><input type=text size=30 name=username>
+<dt>Password:
+<dd><input type=text size=30 name=password>
+<dt>Admin?:
+<dd><input type=text size=30 name=admin>
+<dd><input type=submit value=Add>
+</dl>
+</form>
+
+<ul class=accounts>
+<h2>Existing accounts:</h2><br>
+{% for entry in entries %}
+<li><h2>{{ entry.username }}</h2><h3>Password: {{ entry.password }}</h3>{{ entry.admin }}
+{% else %}
+<li><em>No accounts.</em>
+{% endfor %}
+{% else %}
+<em>Admin only. Login as admin to continue.</em>
+{% endif %}
+</ul>
+{% endblock %}
