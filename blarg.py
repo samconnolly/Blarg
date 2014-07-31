@@ -166,6 +166,17 @@ def add_account():
     flash('New accounts was successfully added')
     return redirect(url_for('show_accounts'))    # return to entries page
 
+# delete entry
+@app.route('/delete')
+def delete_entry():
+    if not (session.get('logged_in') and app.config['ADMIN'] == True):     # check if user is logged on
+        abort(401)
+    db = get_db()
+    db.execute('delete from entries where time=(?)',request.form['time'])
+    db.commit()
+    flash('Entry was successfully deleted')
+    return redirect(url_for('show_entries'))    # return to entries page
+
         
 def add_account_manual(username,password,admin):
     with app.app_context():
@@ -173,7 +184,8 @@ def add_account_manual(username,password,admin):
         db.execute('insert into accounts (username,password,admin) values (?,?,?)',
                     [username,password,admin])
         db.commit() 
-        
+   
+     
 #===============================================================================
 
 # run the application if run as standalone app
