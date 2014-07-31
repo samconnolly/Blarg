@@ -15,9 +15,9 @@ to start database:
     
 import os
 os.chdir('K:\\flask\\blarg')
-from blarg import init_db
+from blarg import init_db,add_account_manual
 init_db()
-
+add_account_manual('sam','dog','true')
 """
 
 import os
@@ -99,7 +99,7 @@ def add_entry():
     timestamp = datetime.datetime.fromtimestamp(time.time())\
                 .strftime('%Y-%m-%d %H:%M:%S') # timestamp in good format
     db = get_db()
-    db.execute('insert into entries (title,text,time) values (?,?,?)',
+    db.execute('insert into staged (title,text,time) values (?,?,?)',
                 [request.form['title'],request.form['text'],timestamp])
     db.commit()
     flash('New entry was successfully posted')
@@ -184,8 +184,27 @@ def add_account_manual(username,password,admin):
         db.execute('insert into accounts (username,password,admin) values (?,?,?)',
                     [username,password,admin])
         db.commit() 
-   
-     
+ 
+@app.route('/stage_entries')
+def stage_entries():
+    db = get_db()
+    cur = db.execute('select title, time, text from staged order by id desc')
+    entries = cur.fetchall()
+    return render_template('stage_entries.html', entries=entries,\
+                        admin=app.config['ADMIN'],username=app.config['USERNAME']) 
+                        
+@app.route('/submit')
+def submit_staged():
+    db = get_db()
+    cur = db.execute('select title, time, text from staged order by id desc')
+    entries = cur.fetchall()
+    db.execute('insert into staged (title,text,time) values (?,?,?)',
+                [request.form['title'],request.form['text'],timestamp])
+    db.commit()
+    flash('New entry was successfully posted')
+    return redirect(url_for('show_entries'))    # return to entries page
+          
+
 #===============================================================================
 
 # run the application if run as standalone app
