@@ -14,10 +14,10 @@
 {% endif %}
 <ul class=entries>
 {% for entry in entries %}
-<form action="{{ url_for('delete_entry') }}" class=delete-entry>
+<form action="{{ url_for('delete_entry') }}"  method=post class=delete-entry>
 <li><h2>{{ entry.title }}</h2><h3  name=time>{{ entry.time }}</h3><br>{{ entry.text|safe }}
 {% if admin == True  %}
-<br><button type="submit" >Delete</button>
+<br><button type="submit" value={{entry.etime}} name="delete">Delete</button>
 {% endif %}
 </form>
 {% else %}

@@ -204,11 +204,24 @@ def submit_staged():
                 [selected['title'],selected['text'],selected['time'],selected['etime']])
     db.execute('delete from staged where etime == (?)',[selected['etime']])
     db.commit()
-    flash('New entry was successfully posted')
+    flash('Staged entry was successfully posted')
     return redirect(url_for('stage_entries'))    # return to entries page
 
 @app.route('/delete',methods=['POST']) 
-def delete_entry():         
+def delete_entry():   
+    db = get_db()
+    cur = db.execute('select title,text,time,etime from entries order by id desc')
+    entries = cur.fetchall()
+  
+#    for entry in entries:
+#        if request.form['delete'] == entry['etime']:
+#                selected = entry
+#        
+#    db.execute('insert into deleted (title,text,time,etime) values (?,?,?,?)',
+#                [selected['title'],selected['text'],selected['time'],selected['etime']])
+    #db.execute('delete from entries where etime == (?)',[selected['etime']])
+    #db.commit()
+    flash('Entry was successfully deleted')      
     return redirect(url_for('show_entries'))    # return to entries page
 #===============================================================================
 
