@@ -14,7 +14,6 @@
 <br>Logged in as admin
 <br><a href="{{ url_for('show_accounts') }}">Accounts</a>
 <br><a href="{{ url_for('stage_entries') }}">Staged Entries</a>
-<br><a href="{{ url_for('show_entries') }}">Published Entries</a>
 {% endif %}
 </div>
 {% for message in get_flashed_messages() %}

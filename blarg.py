@@ -18,6 +18,13 @@ os.chdir('K:\\flask\\blarg')
 from blarg import init_db,add_account_manual
 init_db()
 add_account_manual('sam','dog','true')
+
+or 
+import os
+os.chdir('/export/xray11/sdc1g08/HDData/flask/blarg')
+from blarg import init_db,add_account_manual
+init_db()
+add_account_manual('sam','dog','true')
 """
 
 import os
@@ -96,11 +103,12 @@ def show_entries():
 def add_entry():
     if not session.get('logged_in'):    # check if user is logged on
         abort(401)
-    timestamp = datetime.datetime.fromtimestamp(time.time())\
+    etime = time.time()
+    timestamp = datetime.datetime.fromtimestamp(etime)\
                 .strftime('%Y-%m-%d %H:%M:%S') # timestamp in good format
     db = get_db()
-    db.execute('insert into staged (title,text,time) values (?,?,?)',
-                [request.form['title'],request.form['text'],timestamp])
+    db.execute('insert into staged (title,text,etime,time) values (?,?,?,?)',
+                [request.form['title'],request.form['text'],etime,timestamp])
     db.commit()
     flash('New entry was successfully posted')
     return redirect(url_for('show_entries'))    # return to entries page
@@ -160,22 +168,11 @@ def add_account():
     if not (session.get('logged_in') and app.config['ADMIN'] == True):    # check if user is logged on
         abort(401)
     db = get_db()
-    db.execute('insert into accounts (username,password,admin) values (?,?,?)',
+    db.execute('insert into accounts (username,password,admin) values (?,?,?,?)',
                 [request.form['username'],request.form['password'],request.form['admin']])
     db.commit()
     flash('New accounts was successfully added')
     return redirect(url_for('show_accounts'))    # return to entries page
-
-# delete entry
-@app.route('/delete')
-def delete_entry():
-    if not (session.get('logged_in') and app.config['ADMIN'] == True):     # check if user is logged on
-        abort(401)
-    db = get_db()
-    db.execute('delete from entries where time=(?)',request.form['time'])
-    db.commit()
-    flash('Entry was successfully deleted')
-    return redirect(url_for('show_entries'))    # return to entries page
 
         
 def add_account_manual(username,password,admin):
@@ -184,27 +181,35 @@ def add_account_manual(username,password,admin):
         db.execute('insert into accounts (username,password,admin) values (?,?,?)',
                     [username,password,admin])
         db.commit() 
- 
+        
 @app.route('/stage_entries')
 def stage_entries():
     db = get_db()
-    cur = db.execute('select title, time, text from staged order by id desc')
+    cur = db.execute('select title, time, text, etime from staged order by id desc')
     entries = cur.fetchall()
     return render_template('stage_entries.html', entries=entries,\
                         admin=app.config['ADMIN'],username=app.config['USERNAME']) 
                         
-@app.route('/submit')
+@app.route('/submit',methods=['POST'])
 def submit_staged():
     db = get_db()
-    cur = db.execute('select title, time, text from staged order by id desc')
-    entries = cur.fetchall()
-    db.execute('insert into staged (title,text,time) values (?,?,?)',
-                [request.form['title'],request.form['text'],timestamp])
+    cur = db.execute('select title,text,time,etime from staged order by id desc')
+    staged = cur.fetchall()
+    
+    for entry in staged:
+        if request.form['submit'] == entry['etime']:
+                selected = entry
+        
+    db.execute('insert into entries (title,text,time,etime) values (?,?,?,?)',
+                [selected['title'],selected['text'],selected['time'],selected['etime']])
+    db.execute('delete from staged where etime == (?)',[selected['etime']])
     db.commit()
     flash('New entry was successfully posted')
-    return redirect(url_for('show_entries'))    # return to entries page
-          
+    return redirect(url_for('stage_entries'))    # return to entries page
 
+@app.route('/delete',methods=['POST']) 
+def delete_entry():         
+    return redirect(url_for('show_entries'))    # return to entries page
 #===============================================================================
 
 # run the application if run as standalone app
