@@ -6,10 +6,11 @@
 <form action="{{ url_for('submit_staged') }}" method=post class=add-entry>
 <dl><dt>
 {% for entry in entries %}
-<li><h2>{{ entry.title }}</h2><h3>{{ entry.time }}</h3><br>{{ entry.text|safe }}
+<li><h2>{{entry.username}}:{{ entry.title }}</h2>
+<h3>{{ entry.time }}</h3><br>{{ entry.text|safe }}
 <br><br>Score:<input type=text size=5 name=score>
 <button type="submit" value={{entry.etime}} name="submit">Submit</button>
-<button type="submit" value={{entry.etime}} name="submit">Delete</button>
+<button type="submit" value={{entry.etime}} name="delete">Delete</button>
 {% else %}
 <li><em> No entries here so far</em>
 {% endfor %}

@@ -93,7 +93,7 @@ def init_db():
 @app.route('/')
 def show_entries():
     db = get_db()
-    cur = db.execute('select title, time, text, etime from entries order by id desc')
+    cur = db.execute('select title, time, text, etime, score, username from entries order by id desc')
     entries = cur.fetchall()
     return render_template('show_entries.html', entries=entries,\
                         admin=app.config['ADMIN'],username=app.config['USERNAME'])
@@ -107,8 +107,8 @@ def add_entry():
     timestamp = datetime.datetime.fromtimestamp(etime)\
                 .strftime('%Y-%m-%d %H:%M:%S') # timestamp in good format
     db = get_db()
-    db.execute('insert into staged (title,text,etime,time) values (?,?,?,?)',
-                [request.form['title'],request.form['text'],etime,timestamp])
+    db.execute('insert into staged (title,text,etime,time,score,username) values (?,?,?,?,?,?)',
+                [request.form['title'],request.form['text'],etime,timestamp,0,app.config['USERNAME']])
     db.commit()
     flash('New entry was successfully posted')
     return redirect(url_for('show_entries'))    # return to entries page
@@ -151,7 +151,7 @@ def logout():
     return redirect(url_for('show_entries'))
 
 #=============== Admin user commands ===========================================
-
+# display existing accounts
 @app.route('/accounts')
 def show_accounts(): 
     if not (session.get('logged_in') and app.config['ADMIN'] == True):    # check if user is logged on
@@ -162,93 +162,87 @@ def show_accounts():
     return render_template('show_accounts.html', entries=accounts,\
                     admin=app.config['ADMIN'],username=app.config['USERNAME'])
 
-# add new entry
+# add new account
 @app.route('/add_account',methods=['POST'])
 def add_account():
     if not (session.get('logged_in') and app.config['ADMIN'] == True):    # check if user is logged on
         abort(401)
     db = get_db()
-    db.execute('insert into accounts (username,password,admin) values (?,?,?,?)',
-                [request.form['username'],request.form['password'],request.form['admin']])
+    db.execute('insert into accounts (username,password,admin,score) values (?,?,?,?)',
+                [request.form['username'],request.form['password'],request.form['admin'],0])
     db.commit()
     flash('New accounts was successfully added')
     return redirect(url_for('show_accounts'))    # return to entries page
 
-        
+# manually add account        
 def add_account_manual(username,password,admin):
     with app.app_context():
         db = get_db()
-        db.execute('insert into accounts (username,password,admin) values (?,?,?)',
-                    [username,password,admin])
+        db.execute('insert into accounts (username,password,admin, score) values (?,?,?,?)',
+                    [username,password,admin,0])
         db.commit() 
-        
+
+# display staged posts        
 @app.route('/stage_entries')
 def stage_entries():
     db = get_db()
-    cur = db.execute('select title, time, text, etime from staged order by id desc')
+    cur = db.execute('select title, time, text, etime,score,username from staged order by id desc')
     entries = cur.fetchall()
     return render_template('stage_entries.html', entries=entries,\
                         admin=app.config['ADMIN'],username=app.config['USERNAME']) 
-                        
+
+# submit or delete staged posts
 @app.route('/submit',methods=['POST'])
 def submit_staged():
     db = get_db()
-    cur = db.execute('select title,text,time,etime from staged order by id desc')
+    cur = db.execute('select title,text,time,etime, score,username from staged order by id desc')
     staged = cur.fetchall()
     
     for entry in staged:
         keys = request.form.keys()
         
         if 'submit' in keys:
+            
+            score = request.form['score']
+            
+            if score == '':
+                score = 0
+            
             if request.form['submit'] == entry['etime']:
                     selected = entry
-                    db.execute('insert into entries (title,text,time,etime) values (?,?,?,?)',
-                    [selected['title'],selected['text'],selected['time'],selected['etime']])
+                    db.execute('insert into entries (title,text,time,etime,score,username) values (?,?,?,?,?,?)',
+                    [selected['title'],selected['text'],selected['time'],selected['etime'],score,selected['username']])
                     flash('Staged entry was successfully posted')
 
         elif 'delete' in keys:                
             if request.form['delete'] == entry['etime']:
                 selected = entry
-                db.execute('insert into deleted (title,text,time,etime) values (?,?,?,?)',
-                [selected['title'],selected['text'],selected['time'],selected['etime']])
+                db.execute('insert into deleted (title,text,time,etime,score,username) values (?,?,?,?,?,?)',
+                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username']])
                 flash('Staged entry was successfully deleted')    
   
     db.execute('delete from staged where etime == (?)',[selected['etime']])
     db.commit()
     return redirect(url_for('stage_entries'))    # return to entries page
 
+# delete submitted posts
 @app.route('/delete',methods=['POST']) 
 def delete_entry():   
     db = get_db()
-    cur = db.execute('select title,text,time,etime from entries order by id desc')
+    cur = db.execute('select title,text,time,etime,score,username from entries order by id desc')
     entries = cur.fetchall()
   
     for entry in entries:
         if request.form['delete'] == entry['etime']:
                 selected = entry
         
-    db.execute('insert into deleted (title,text,time,etime) values (?,?,?,?)',
-                [selected['title'],selected['text'],selected['time'],selected['etime']])
+    db.execute('insert into deleted (title,text,time,etime,score,username) values (?,?,?,?,?,?)',
+                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username']])
     db.execute('delete from entries where etime == (?)',[selected['etime']])
     db.commit()
     flash('Entry was successfully deleted')      
     return redirect(url_for('show_entries'))    # return to entries page
     
-#def delete_staged():   
-#    db = get_db()
-#    cur = db.execute('select title,text,time,etime from staged order by id desc')
-#    entries = cur.fetchall()
-#  
-#    for entry in entries:
-#        if request.form['delete'] == entry['etime']:
-#                selected = entry
-#        
-#    db.execute('insert into deleted (title,text,time,etime) values (?,?,?,?)',
-#                [selected['title'],selected['text'],selected['time'],selected['etime']])
-#    db.execute('delete from entries where etime == (?)',[selected['etime']])
-#    db.commit()
-#    flash('Staged entry was successfully deleted')      
-#    return redirect(url_for('stage_entries'))    # return to entries page    
     
 #===============================================================================
 

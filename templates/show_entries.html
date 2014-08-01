@@ -14,16 +14,20 @@
 </form>
 {% endif %}
 <ul class=entries>
-<form action="{{ url_for('delete_entry') }}"  method=post class=delete-entry>
+
 {% for entry in entries %}
-<li><h2>{{ entry.title }}</h2><h3  name=time>{{ entry.time }}</h3>
+<li><h2>{{entry.username}}: {{ entry.title }} - {{entry.score}} point(s)</h2>
+<h3  name=time>{{ entry.time }}</h3>
 <br>{{ entry.text|safe }}
+
 {% if admin == True  %}
+<form action="{{ url_for('delete_entry') }}"  method=post class=delete-entry>
 <br><button type="submit" value={{entry.etime}} name="delete">Delete</button>
+</form>
+
 {% endif %}
 {% else %}
 <li><em> No entries here so far</em>
 {% endfor %}
-</form>
 </ul>
 {% endblock %}
