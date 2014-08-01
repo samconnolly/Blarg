@@ -49,7 +49,7 @@ app.config.update(dict(
     SECRET_KEY='development key',
     USERNAME='admin',
     PASSWORD='default',
-    ADMIN=False))
+    ADMIN=True)) ## change this before release!
 
 # override config from an environment variable,
 #    to give var pointing to config file
@@ -197,14 +197,24 @@ def submit_staged():
     staged = cur.fetchall()
     
     for entry in staged:
-        if request.form['submit'] == entry['etime']:
-                selected = entry
+        keys = request.form.keys()
         
-    db.execute('insert into entries (title,text,time,etime) values (?,?,?,?)',
+        if 'submit' in keys:
+            if request.form['submit'] == entry['etime']:
+                    selected = entry
+                    db.execute('insert into entries (title,text,time,etime) values (?,?,?,?)',
+                    [selected['title'],selected['text'],selected['time'],selected['etime']])
+                    flash('Staged entry was successfully posted')
+
+        elif 'delete' in keys:                
+            if request.form['delete'] == entry['etime']:
+                selected = entry
+                db.execute('insert into deleted (title,text,time,etime) values (?,?,?,?)',
                 [selected['title'],selected['text'],selected['time'],selected['etime']])
+                flash('Staged entry was successfully deleted')    
+  
     db.execute('delete from staged where etime == (?)',[selected['etime']])
     db.commit()
-    flash('Staged entry was successfully posted')
     return redirect(url_for('stage_entries'))    # return to entries page
 
 @app.route('/delete',methods=['POST']) 
@@ -223,6 +233,23 @@ def delete_entry():
     db.commit()
     flash('Entry was successfully deleted')      
     return redirect(url_for('show_entries'))    # return to entries page
+    
+#def delete_staged():   
+#    db = get_db()
+#    cur = db.execute('select title,text,time,etime from staged order by id desc')
+#    entries = cur.fetchall()
+#  
+#    for entry in entries:
+#        if request.form['delete'] == entry['etime']:
+#                selected = entry
+#        
+#    db.execute('insert into deleted (title,text,time,etime) values (?,?,?,?)',
+#                [selected['title'],selected['text'],selected['time'],selected['etime']])
+#    db.execute('delete from entries where etime == (?)',[selected['etime']])
+#    db.commit()
+#    flash('Staged entry was successfully deleted')      
+#    return redirect(url_for('stage_entries'))    # return to entries page    
+    
 #===============================================================================
 
 # run the application if run as standalone app
