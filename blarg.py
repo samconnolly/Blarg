@@ -113,6 +113,42 @@ def add_entry():
     flash('New entry was successfully posted')
     return redirect(url_for('show_entries'))    # return to entries page
 
+# score board
+@app.route('/scoreboard')
+def scoreboard():
+    db = get_db()
+    cur = db.execute('select username,score from accounts order by id desc')
+    accs = cur.fetchall()
+    cur = db.execute('select username, score from entries order by id desc')
+    posts = cur.fetchall()
+    
+    scores = []    
+    
+    for acc in accs:
+        username = acc['username']
+        score = 0
+        
+        # add up scores for this account
+        for post in posts:                  
+            if post['username'] == username:
+                score += int(post['score'])
+        
+        # make sure scores are in order
+        if len(scores) > 1:
+            done = False
+            
+            for i in range(len(scores)):
+                if score < int(scores[i][1]) and done == False:
+                    scores.insert(i,[username,str(score)])
+                    done = True
+                    
+            if done == False:
+                scores.append([username,str(score)])
+        else:
+            scores.append([username,str(score)]) 
+       
+    return render_template('scoreboard.html',scores=scores[::-1],username=app.config['USERNAME'])    
+    
 #========== login/out commands =================================================
 @app.route('/login', methods=['GET','POST'])
 def login():   

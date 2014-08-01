@@ -8,12 +8,18 @@
 {% if not session.logged_in %}
 <a href="{{ url_for('login') }}">log in</a>
 {% else %}
-<a href="{{ url_for('logout') }}">log out</a><br>Username: {{username}}
+Username: {{username}}
+<br><a href="{{ url_for('logout') }}">log out</a>
 {% endif %}
+
+<br><a href="{{ url_for('scoreboard') }}">Score Board</a>
+<br><a href="{{ url_for('scoreboard') }}">Forum</a>
+
 {% if admin == True  %}
-<br>Logged in as admin
+<br><br>Logged in as admin
 <br><a href="{{ url_for('show_accounts') }}">Accounts</a>
 <br><a href="{{ url_for('stage_entries') }}">Staged Entries</a>
+<br><a href="{{ url_for('show_entries') }}">Published Entries</a>
 {% endif %}
 </div>
 {% for message in get_flashed_messages() %}
