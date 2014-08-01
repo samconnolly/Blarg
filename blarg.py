@@ -93,7 +93,7 @@ def init_db():
 @app.route('/')
 def show_entries():
     db = get_db()
-    cur = db.execute('select title, time, text from entries order by id desc')
+    cur = db.execute('select title, time, text, etime from entries order by id desc')
     entries = cur.fetchall()
     return render_template('show_entries.html', entries=entries,\
                         admin=app.config['ADMIN'],username=app.config['USERNAME'])
@@ -213,14 +213,14 @@ def delete_entry():
     cur = db.execute('select title,text,time,etime from entries order by id desc')
     entries = cur.fetchall()
   
-#    for entry in entries:
-#        if request.form['delete'] == entry['etime']:
-#                selected = entry
-#        
-#    db.execute('insert into deleted (title,text,time,etime) values (?,?,?,?)',
-#                [selected['title'],selected['text'],selected['time'],selected['etime']])
-    #db.execute('delete from entries where etime == (?)',[selected['etime']])
-    #db.commit()
+    for entry in entries:
+        if request.form['delete'] == entry['etime']:
+                selected = entry
+        
+    db.execute('insert into deleted (title,text,time,etime) values (?,?,?,?)',
+                [selected['title'],selected['text'],selected['time'],selected['etime']])
+    db.execute('delete from entries where etime == (?)',[selected['etime']])
+    db.commit()
     flash('Entry was successfully deleted')      
     return redirect(url_for('show_entries'))    # return to entries page
 #===============================================================================
