@@ -7,7 +7,7 @@
 <h1>Score Board</h1>
 
 {% for score in scores %}
-{% if username == score[0]  %}
+{% if session.username == score[0]  %}
 <li><h1>{{score[0]}} - {{score[1]}} point(s)</h1>
 {% else %}
 <li><h2>{{score[0]}} - {{score[1]}} point(s)</h2>

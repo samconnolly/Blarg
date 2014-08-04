@@ -34,10 +34,12 @@ import datetime
 
 from flask import Flask, request, session, g, redirect, url_for, abort, \
                     render_template, flash
-                    
+from flask.ext.mobility import Mobility
+from flask.ext.mobility.decorators import mobile_template
 # create application
 app = Flask(__name__)  # name given in brackets, but providing __name__
                             # is good for single apps, as the name will change
+Mobility(app)
 app.config.from_object(__name__)
 
 # Load default config:
@@ -45,16 +47,17 @@ app.config.from_object(__name__)
 # MAKE SURE DEBUG IS OFF WHEN LIVE OR USERS CAN EXECUTE CODE ON THE SERVER!
 app.config.update(dict(
     DATABASE=os.path.join(app.root_path,'blarg.db'),
-    DEBUG=True,
-    SECRET_KEY='development key',
-    USERNAME='admin',
-    PASSWORD='default',
-    ADMIN=True)) ## change this before release!
+    DEBUG=True,    ### change this to flase before release!
+    )) 
 
 # override config from an environment variable,
 #    to give var pointing to config file
 app.config.from_envvar('BLARG_SETTINGS', silent=True)
 
+# setup login manager
+#login_manager = LoginManager()
+#login_manager.init_app(app)
+#
 #======== Database functions ===================================================
 
 # database reading function
@@ -87,16 +90,41 @@ def init_db():
         with app.open_resource('schema.sql',mode='r') as f:
             db.cursor().executescript(f.read())
         db.commit()
-        
-#============ Blag Entry Commands ==============================================
-# show entries - list newest first (highest id first)
+ 
+#============ Login manager stuff ================================================
+       
+#@login_manager.user_loader
+#def load_user(userid):
+#    return User.get(userid)       
+#       
+#@app.route("/secure_login",methods=['GET','POST'])
+#def secure_login():
+#    form = LoginForm()
+#    if form.validate_on_submit():   # login and validate user
+#        login_user(user)
+#        flash("Logged in successfully")
+#        return redirect(request.args.get('next') or url_for('show_entries'))
+#    return render_template
+
+#============ Home/ index page ===================================================
 @app.route('/')
-def show_entries():
+@mobile_template('{mobile/}home.html')      # this can be used for mobile friendliness!
+def home(template):
+    if 'username' in session:
+        return render_template(template)
+    else:
+        session['logged_in'] = False
+        return render_template(template)
+       
+#============ Blag Entry Commands ================================================
+# show entries - list newest first (highest id first)
+@app.route('/show_entries')
+@mobile_template('{mobile/}show_entries.html')
+def show_entries(template):
     db = get_db()
     cur = db.execute('select title, time, text, etime, score, username from entries order by id desc')
     entries = cur.fetchall()
-    return render_template('show_entries.html', entries=entries,\
-                        admin=app.config['ADMIN'],username=app.config['USERNAME'])
+    return render_template(template, entries=entries)
 
 # add new entry
 @app.route('/add',methods=['POST'])
@@ -108,14 +136,15 @@ def add_entry():
                 .strftime('%Y-%m-%d %H:%M:%S') # timestamp in good format
     db = get_db()
     db.execute('insert into staged (title,text,etime,time,score,username) values (?,?,?,?,?,?)',
-                [request.form['title'],request.form['text'],etime,timestamp,0,app.config['USERNAME']])
+                [request.form['title'],request.form['text'],etime,timestamp,0,session['username']])
     db.commit()
     flash('New entry was successfully posted')
     return redirect(url_for('show_entries'))    # return to entries page
 
 # score board
 @app.route('/scoreboard')
-def scoreboard():
+@mobile_template('{mobile/}scoreboard.html')
+def scoreboard(template):
     db = get_db()
     cur = db.execute('select username,score from accounts order by id desc')
     accs = cur.fetchall()
@@ -134,7 +163,7 @@ def scoreboard():
                 score += int(post['score'])
         
         # make sure scores are in order
-        if len(scores) > 1:
+        if len(scores) > 0:
             done = False
             
             for i in range(len(scores)):
@@ -147,11 +176,12 @@ def scoreboard():
         else:
             scores.append([username,str(score)]) 
        
-    return render_template('scoreboard.html',scores=scores[::-1],username=app.config['USERNAME'])    
+    return render_template(template,scores=scores[::-1])    
     
 #========== login/out commands =================================================
 @app.route('/login', methods=['GET','POST'])
-def login():   
+@mobile_template('{mobile/}login.html')
+def login(template):   
     error = None
     if request.method == 'POST':
         db = get_db()
@@ -161,55 +191,91 @@ def login():
         for a in accounts:
             if request.form['username'] == a['username'] \
                 and request.form['password'] == a['password']:
-                        app.config['USERNAME'] = request.form['username']
-                        app.config['PASSWORD'] = request.form['password']
+                        session['username'] = request.form['username']
                         
                         if a['admin'] == 'true':
-                            app.config['ADMIN'] = True
+                            session['admin'] = True
                             flash('You were logged in as admin')
                         else:
-                            app.config['ADMIN'] = False
+                            session['admin'] = False
                             flash('You were logged in')
                         session['logged_in'] = True
+                        session['username'] = request.form['username']
                         
                         return redirect(url_for('show_entries'))# return to entries if success
         else:
             error = 'Invalid username and password combination'
-    return render_template('login.html',error=error,\
-                admin=app.config['ADMIN'],username=app.config['USERNAME'])  # else return error
+    return render_template(template,error=error)  # else return error
         
     
 @app.route('/logout')
 def logout():
     session.pop('logged_in',None)
-    app.config['ADMIN'] = False
+    session['admin'] = False
     flash('You were logged out')
     return redirect(url_for('show_entries'))
 
-#=============== Admin user commands ===========================================
+#=============== Admin user commands =============================================
+
+#=================== accounts ====================================================
+
 # display existing accounts
 @app.route('/accounts')
 def show_accounts(): 
-    if not (session.get('logged_in') and app.config['ADMIN'] == True):    # check if user is logged on
+    if not (session.get('logged_in') and session['admin'] == True):    # check if user is logged on
         abort(401)
     db = get_db()
     cur = db.execute('select username,password,admin from accounts order by id desc')
     accounts = cur.fetchall()
-    return render_template('show_accounts.html', entries=accounts,\
-                    admin=app.config['ADMIN'],username=app.config['USERNAME'])
+    return render_template('show_accounts.html', entries=accounts)
 
 # add new account
 @app.route('/add_account',methods=['POST'])
 def add_account():
-    if not (session.get('logged_in') and app.config['ADMIN'] == True):    # check if user is logged on
+    if not (session.get('logged_in') and session['admin'] == True):    # check if user is logged on
         abort(401)
-    db = get_db()
-    db.execute('insert into accounts (username,password,admin,score) values (?,?,?,?)',
-                [request.form['username'],request.form['password'],request.form['admin'],0])
-    db.commit()
-    flash('New accounts was successfully added')
-    return redirect(url_for('show_accounts'))    # return to entries page
 
+    if request.form['username'] != '' and request.form['password'] != '':
+        db = get_db()
+        if 'admin' in request.form.keys():
+            admin = 'true'
+        else:
+            admin = 'false'
+        db.execute('insert into accounts (username,password,admin,score) values (?,?,?,?)',
+                    [request.form['username'],request.form['password'],admin,0])
+        db.commit()
+        flash('New account was successfully added')
+        return redirect(url_for('show_accounts'))    # return to entries page
+        
+    else:
+        flash('Non-blank username and password required')
+        return redirect(url_for('show_accounts'))
+
+# delete account
+@app.route('/delete_account',methods=['POST'])
+def delete_account():
+    if not (session.get('logged_in') and session['admin'] == True):    # check if user is logged on
+        abort(401)
+    if 'confirm' in request.form.keys():
+    
+        db = get_db()
+        cur = db.execute('select username from accounts order by id desc')
+        accounts = cur.fetchall()
+
+        for account in accounts:
+            if request.form['delete'] == account['username']:
+                    selected = account
+            
+        db.execute('delete from accounts where username == (?)',[selected['username']])
+        db.commit()
+        flash('Account was successfully deleted')
+        return redirect(url_for('show_accounts'))    # return to entries page
+
+
+    else:
+        flash('Confirm deletion before clicking to delete.')
+        return redirect(url_for('show_accounts'))
+      
 # manually add account        
 def add_account_manual(username,password,admin):
     with app.app_context():
@@ -218,14 +284,23 @@ def add_account_manual(username,password,admin):
                     [username,password,admin,0])
         db.commit() 
 
+#=================== post staging and deletion ===================================
+
 # display staged posts        
 @app.route('/stage_entries')
 def stage_entries():
     db = get_db()
     cur = db.execute('select title, time, text, etime,score,username from staged order by id desc')
     entries = cur.fetchall()
-    return render_template('stage_entries.html', entries=entries,\
-                        admin=app.config['ADMIN'],username=app.config['USERNAME']) 
+    return render_template('stage_entries.html', entries=entries) 
+
+# display deleted posts        
+@app.route('/deleted')
+def deleted_entries():
+    db = get_db()
+    cur = db.execute('select title, time, text, etime,score,username from deleted order by id desc')
+    entries = cur.fetchall()
+    return render_template('deleted_entries.html', entries=entries) 
 
 # submit or delete staged posts
 @app.route('/submit',methods=['POST'])
@@ -278,11 +353,51 @@ def delete_entry():
     db.commit()
     flash('Entry was successfully deleted')      
     return redirect(url_for('show_entries'))    # return to entries page
+ 
+# restore deleted posts
+@app.route('/forum_restore',methods=['POST']) 
+def restore_post():   
+    db = get_db()
+    cur = db.execute('select title,text,time,etime,score,username from deleted order by id desc')
+    entries = cur.fetchall()
+  
+    for entry in entries:
+        if request.form['post'] == entry['etime']:
+                selected = entry
+        
+    db.execute('insert into entries (title,text,time,etime,score,username) values (?,?,?,?,?,?)',
+                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username']])
+    db.execute('delete from deleted where etime == (?)',[selected['etime']])
+    db.commit()
+    flash('Entry was successfully restored to forum')      
+    return redirect(url_for('deleted_entries'))    # return to entries page
+       
+@app.route('/staged_restore',methods=['POST'])   
+def restore_staged():  
+    db = get_db()
+    cur = db.execute('select title,text,time,etime,score,username from deleted order by id desc')
+    entries = cur.fetchall()
+  
+    for entry in entries:
+        if request.form['stage'] == entry['etime']:
+                selected = entry
+        
+    db.execute('insert into staged (title,text,time,etime,score,username) values (?,?,?,?,?,?)',
+                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username']])
+    db.execute('delete from deleted where etime == (?)',[selected['etime']])
+    db.commit()
+    flash('Entry was successfully restored to staging')      
+    return redirect(url_for('deleted_entries'))    # return to entries page
     
-    
+#========== Dev/testing ==========================================================
+
+       
 #===============================================================================
+
+# set the secret key. Keep it safe. Keep it secret.
+app.secret_key = '_~q\xf4c\x88\x1b\x0fPi\x88\x9dj?Ofj\x8f\xee\xa4\xcb\x9a\xe9U'
 
 # run the application if run as standalone app
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')
     
