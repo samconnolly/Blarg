@@ -48,6 +48,7 @@ app.config.from_object(__name__)
 app.config.update(dict(
     DATABASE=os.path.join(app.root_path,'blarg.db'),
     DEBUG=True,    ### change this to flase before release!
+    ACTIVE_DAY=1
     )) 
 
 # override config from an environment variable,
@@ -113,7 +114,7 @@ def show_entries(n,template):
     cur = db.execute('select title, time, text, etime, score, username, forum from entries order by id desc')
     entries = cur.fetchall()
     # show the post with the given id, the id is an integer
-    return render_template(template,n=n, entries=entries)
+    return render_template(template,n=n, entries=entries, active=app.config['ACTIVE_DAY'])
 
 # add new entry
 @app.route('/add/<int:n>',methods=['POST'])
@@ -317,6 +318,8 @@ def add_account_manual(username,password,admin):
 # display staged posts        
 @app.route('/stage_entries')
 def stage_entries():
+    if not (session.get('logged_in') and session['admin'] == True):    # check if user is logged on
+        abort(401)
     db = get_db()
     cur = db.execute('select title, time, text, etime,score,username,forum from staged order by id desc')
     entries = cur.fetchall()
@@ -325,6 +328,8 @@ def stage_entries():
 # display deleted posts        
 @app.route('/deleted')
 def deleted_entries():
+    if not (session.get('logged_in') and session['admin'] == True):    # check if user is logged on
+        abort(401)
     db = get_db()
     cur = db.execute('select title, time, text, etime,score,username, forum from deleted order by id desc')
     entries = cur.fetchall()
@@ -333,6 +338,8 @@ def deleted_entries():
 # submit or delete staged posts
 @app.route('/submit',methods=['POST'])
 def submit_staged():
+    if not (session.get('logged_in') and session['admin'] == True):    # check if user is logged on
+        abort(401)
     db = get_db()
     cur = db.execute('select title,text,time,etime, score,username, forum from staged order by id desc')
     staged = cur.fetchall()
@@ -366,7 +373,9 @@ def submit_staged():
 
 # delete submitted posts
 @app.route('/delete/<int:n>',methods=['POST']) 
-def delete_entry(n):   
+def delete_entry(n):
+    if not (session.get('logged_in') and session['admin'] == True):    # check if user is logged on
+        abort(401)
     db = get_db()
     cur = db.execute('select title,text,time,etime,score,username,forum from entries order by id desc')
     entries = cur.fetchall()
@@ -384,7 +393,9 @@ def delete_entry(n):
  
 # restore deleted posts
 @app.route('/forum_restore',methods=['POST']) 
-def restore_post():   
+def restore_post():
+    if not (session.get('logged_in') and session['admin'] == True):    # check if user is logged on
+        abort(401)
     db = get_db()
     cur = db.execute('select title,text,time,etime,score,username,forum from deleted order by id desc')
     entries = cur.fetchall()
@@ -401,7 +412,9 @@ def restore_post():
     return redirect(url_for('deleted_entries'))    # return to entries page
        
 @app.route('/staged_restore',methods=['POST'])   
-def restore_staged():  
+def restore_staged(): 
+    if not (session.get('logged_in') and session['admin'] == True):    # check if user is logged on
+        abort(401)
     db = get_db()
     cur = db.execute('select title,text,time,etime,score,username,forum from deleted order by id desc')
     entries = cur.fetchall()
@@ -418,8 +431,15 @@ def restore_staged():
     return redirect(url_for('deleted_entries'))    # return to entries page
     
 #========== Dev/testing ==========================================================
+@app.route('/active_forum')
+def active_forum():
+    return render_template('active_forum.html', active=app.config['ACTIVE_DAY']) 
 
-
+@app.route('/activate_forum',methods=['POST'])
+def activate_forum():
+    app.config['ACTIVE_DAY'] = int(request.form['activate'])
+    return redirect(url_for('active_forum')) 
+    
 #=================================================================================
 #            Run app
 #=================================================================================

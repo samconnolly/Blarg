@@ -1,11 +1,16 @@
 <! The main page, showing the blog entries >
 {% extends "layout.html" %}
 {% block body %}
-{% if entry.forum < 6 %}
+{% if n < 6 %}
 <h1>Science Forum Day {{ n }}</h1>
 {% else %}
 <h1>Media Forum Day {{ n - 5 }}</h1>
 {% endif %}
+
+{% if n == active %}
+<h1>ACTIVE</h1>
+
+
 {% if session.logged_in %}
 <form action="{{ url_for('add_entry',n=n) }}" method=post class=add-entry>
 <dl>
@@ -17,8 +22,9 @@
 </dl>
 </form>
 {% endif %}
-<ul class=entries>
+{% endif %}
 
+<ul class=entries>
 {% for entry in entries %}
 {% if entry.forum == n %}
 <li><h2>{{entry.username}}: {{ entry.title }} - {{entry.score}} point(s)</h2>

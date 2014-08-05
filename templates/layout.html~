@@ -1,6 +1,6 @@
 <!doctype html>
 <!This is the universal layout for each page>
-<title>Blarg!</title>
+<title>SETI Cipher Challenge</title>
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
 <div class=page>
 <h1>Blarg!</h1>
@@ -13,12 +13,12 @@ Username: {{session.username}}
 {% endif %}
 <br><a href="{{ url_for('home') }}">Home</a>
 <br><a href="{{ url_for('scoreboard') }}">Score Board</a>
-<br><a href="{{ url_for('show_entries',n=1) }}">Forum</a>
 {% if session.admin == True and session.logged_in %}
 <br><br>Logged in as admin
 <br><a href="{{ url_for('show_accounts') }}">Accounts</a>
 <br><a href="{{ url_for('stage_entries') }}">Staged Entries</a>
 <br><a href="{{ url_for('deleted_entries') }}">Deleted Entries</a>
+<br><a href="{{ url_for('active_forum') }}">Forums</a>
 {% endif %}
 </div>
 {% for message in get_flashed_messages() %}

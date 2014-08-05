@@ -2,16 +2,15 @@
 {% extends "layout.html" %}
 {% block body %}
 
-<ul class=entries>
-
 <h1>Score Board</h1>
+<br>
 
 <h2> Overall <h2>
 {% for score in scores %}
 {% if session.username == score[0]  %}
-<li><h1>{{score[0]}} - {{score[1]}} point(s)</h1>
-{% else %}
 <li><h2>{{score[0]}} - {{score[1]}} point(s)</h2>
+{% else %}
+<li><h3>{{score[0]}} - {{score[1]}} point(s)</h3>
 {% endif %}
 
 {% else %}
@@ -22,18 +21,18 @@
 <h2> Science <h2>
 {% for score in sscores %}
 {% if session.username == score[0]  %}
-<li><h1>{{score[0]}} - {{score[1]}} point(s)</h1>
-{% else %}
 <li><h2>{{score[0]}} - {{score[1]}} point(s)</h2>
+{% else %}
+<li><h3>{{score[0]}} - {{score[1]}} point(s)</h3>
 {% endif %}
 {% endfor %}
 
 <h2> Media <h2>
 {% for score in mscores %}
 {% if session.username == score[0]  %}
-<li><h1>{{score[0]}} - {{score[1]}} point(s)</h1>
+<li><h2>{{score[0]}} - {{score[1]}} point(s)</h3>
 {% else %}
-<li><h2>{{score[0]}} - {{score[1]}} point(s)</h2>
+<li><h3>{{score[0]}} - {{score[1]}} point(s)</h3>
 {% endif %}
 {% endfor %}
 
