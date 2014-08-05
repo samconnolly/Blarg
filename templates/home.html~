@@ -4,9 +4,22 @@
 
 <h1> HOME PAGE </h1>
 
-<form action="{{ url_for('show_entries') }}" >
-<br><button type="submit" value=link name="link">Science Forum</button>
+{% for i in range(1,6) %}
+<form action="{{ url_for('show_entries',n=i) }}" >
+<br><button type="submit" value=link name="link">Science Forum {{i}}</button>
 </form>
+{% endfor %}
+
+{% for i in range(1,6) %}
+<form action="{{ url_for('show_entries',n={{i+5}}) }}" >
+<br><button type="submit" value=link name="link">Media Forum {{i}}</button>
+</form>
+{% endfor %}
+
+<form action="{{ url_for('scoreboard') }}" >
+<br><button type="submit" value=link name="link">Scoreboard</button>
+</form>
+
 
 {% endblock %}
 

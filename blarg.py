@@ -54,10 +54,7 @@ app.config.update(dict(
 #    to give var pointing to config file
 app.config.from_envvar('BLARG_SETTINGS', silent=True)
 
-# setup login manager
-#login_manager = LoginManager()
-#login_manager.init_app(app)
-#
+
 #======== Database functions ===================================================
 
 # database reading function
@@ -90,21 +87,10 @@ def init_db():
         with app.open_resource('schema.sql',mode='r') as f:
             db.cursor().executescript(f.read())
         db.commit()
- 
-#============ Login manager stuff ================================================
-       
-#@login_manager.user_loader
-#def load_user(userid):
-#    return User.get(userid)       
-#       
-#@app.route("/secure_login",methods=['GET','POST'])
-#def secure_login():
-#    form = LoginForm()
-#    if form.validate_on_submit():   # login and validate user
-#        login_user(user)
-#        flash("Logged in successfully")
-#        return redirect(request.args.get('next') or url_for('show_entries'))
-#    return render_template
+
+#=================================================================================
+#--------------- General User Commands -------------------------------------------
+#=================================================================================
 
 #============ Home/ index page ===================================================
 @app.route('/')
@@ -117,53 +103,67 @@ def home(template):
         return render_template(template)
        
 #============ Blag Entry Commands ================================================
+
+
 # show entries - list newest first (highest id first)
-@app.route('/show_entries')
+@app.route('/post/<int:n>')
 @mobile_template('{mobile/}show_entries.html')
-def show_entries(template):
+def show_entries(n,template):
     db = get_db()
-    cur = db.execute('select title, time, text, etime, score, username from entries order by id desc')
+    cur = db.execute('select title, time, text, etime, score, username, forum from entries order by id desc')
     entries = cur.fetchall()
-    return render_template(template, entries=entries)
+    # show the post with the given id, the id is an integer
+    return render_template(template,n=n, entries=entries)
 
 # add new entry
-@app.route('/add',methods=['POST'])
-def add_entry():
+@app.route('/add/<int:n>',methods=['POST'])
+def add_entry(n):
     if not session.get('logged_in'):    # check if user is logged on
         abort(401)
     etime = time.time()
     timestamp = datetime.datetime.fromtimestamp(etime)\
                 .strftime('%Y-%m-%d %H:%M:%S') # timestamp in good format
     db = get_db()
-    db.execute('insert into staged (title,text,etime,time,score,username) values (?,?,?,?,?,?)',
-                [request.form['title'],request.form['text'],etime,timestamp,0,session['username']])
+    db.execute('insert into staged (title,text,etime,time,score,username,forum) values (?,?,?,?,?,?,?)',
+                [request.form['title'],request.form['text'],etime,timestamp,0,session['username'],n])
     db.commit()
     flash('New entry was successfully posted')
-    return redirect(url_for('show_entries'))    # return to entries page
+    return redirect(url_for('show_entries',n=n))    # return to entries page
 
-# score board
+#======= score board =============================================================
+
 @app.route('/scoreboard')
 @mobile_template('{mobile/}scoreboard.html')
 def scoreboard(template):
     db = get_db()
     cur = db.execute('select username,score from accounts order by id desc')
     accs = cur.fetchall()
-    cur = db.execute('select username, score from entries order by id desc')
+    cur = db.execute('select username, score,forum from entries order by id desc')
     posts = cur.fetchall()
     
-    scores = []    
+    scores = []  
+    sscores = []
+    mscores = []
     
     for acc in accs:
         username = acc['username']
         score = 0
+        sscore = 0
+        mscore = 0
         
         # add up scores for this account
         for post in posts:                  
             if post['username'] == username:
                 score += int(post['score'])
+                
+                if int(post['forum']) < 6:
+                    sscore += int(post['score'])
+                else:
+                    mscore += int(post['score'])
         
         # make sure scores are in order
         if len(scores) > 0:
+            # overall
             done = False
             
             for i in range(len(scores)):
@@ -173,12 +173,37 @@ def scoreboard(template):
                     
             if done == False:
                 scores.append([username,str(score)])
+               
+            # science
+            done = False
+            
+            for i in range(len(sscores)):
+                if sscore < int(sscores[i][1]) and done == False:
+                    sscores.insert(i,[username,str(sscore)])
+                    done = True
+                    
+            if done == False:
+                sscores.append([username,str(sscore)])
+              
+            # media
+            done = False
+            
+            for i in range(len(mscores)):
+                if mscore < int(mscores[i][1]) and done == False:
+                    mscores.insert(i,[username,str(mscore)])
+                    done = True
+                    
+            if done == False:
+                mscores.append([username,str(mscore)])
         else:
             scores.append([username,str(score)]) 
-       
-    return render_template(template,scores=scores[::-1])    
+            sscores.append([username,str(sscore)]) 
+            mscores.append([username,str(mscore)]) 
+   
+    return render_template(template,scores=scores[::-1],sscores=sscores[::-1],mscores=mscores[::-1])    
     
-#========== login/out commands =================================================
+#========== login/out commands ===================================================
+
 @app.route('/login', methods=['GET','POST'])
 @mobile_template('{mobile/}login.html')
 def login(template):   
@@ -202,7 +227,7 @@ def login(template):
                         session['logged_in'] = True
                         session['username'] = request.form['username']
                         
-                        return redirect(url_for('show_entries'))# return to entries if success
+                        return redirect(url_for('home'))# return to entries if success
         else:
             error = 'Invalid username and password combination'
     return render_template(template,error=error)  # else return error
@@ -213,9 +238,12 @@ def logout():
     session.pop('logged_in',None)
     session['admin'] = False
     flash('You were logged out')
-    return redirect(url_for('show_entries'))
+    return redirect(url_for('home'))
 
+#---------------------------------------------------------------------------------
 #=============== Admin user commands =============================================
+#---------------------------------------------------------------------------------
+
 
 #=================== accounts ====================================================
 
@@ -290,7 +318,7 @@ def add_account_manual(username,password,admin):
 @app.route('/stage_entries')
 def stage_entries():
     db = get_db()
-    cur = db.execute('select title, time, text, etime,score,username from staged order by id desc')
+    cur = db.execute('select title, time, text, etime,score,username,forum from staged order by id desc')
     entries = cur.fetchall()
     return render_template('stage_entries.html', entries=entries) 
 
@@ -298,7 +326,7 @@ def stage_entries():
 @app.route('/deleted')
 def deleted_entries():
     db = get_db()
-    cur = db.execute('select title, time, text, etime,score,username from deleted order by id desc')
+    cur = db.execute('select title, time, text, etime,score,username, forum from deleted order by id desc')
     entries = cur.fetchall()
     return render_template('deleted_entries.html', entries=entries) 
 
@@ -306,7 +334,7 @@ def deleted_entries():
 @app.route('/submit',methods=['POST'])
 def submit_staged():
     db = get_db()
-    cur = db.execute('select title,text,time,etime, score,username from staged order by id desc')
+    cur = db.execute('select title,text,time,etime, score,username, forum from staged order by id desc')
     staged = cur.fetchall()
     
     for entry in staged:
@@ -321,15 +349,15 @@ def submit_staged():
             
             if request.form['submit'] == entry['etime']:
                     selected = entry
-                    db.execute('insert into entries (title,text,time,etime,score,username) values (?,?,?,?,?,?)',
-                    [selected['title'],selected['text'],selected['time'],selected['etime'],score,selected['username']])
+                    db.execute('insert into entries (title,text,time,etime,score,username,forum) values (?,?,?,?,?,?,?)',
+                    [selected['title'],selected['text'],selected['time'],selected['etime'],score,selected['username'],selected['forum']])
                     flash('Staged entry was successfully posted')
 
         elif 'delete' in keys:                
             if request.form['delete'] == entry['etime']:
                 selected = entry
-                db.execute('insert into deleted (title,text,time,etime,score,username) values (?,?,?,?,?,?)',
-                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username']])
+                db.execute('insert into deleted (title,text,time,etime,score,username,forum) values (?,?,?,?,?,?,?)',
+                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username'],selected['forum']])
                 flash('Staged entry was successfully deleted')    
   
     db.execute('delete from staged where etime == (?)',[selected['etime']])
@@ -337,36 +365,36 @@ def submit_staged():
     return redirect(url_for('stage_entries'))    # return to entries page
 
 # delete submitted posts
-@app.route('/delete',methods=['POST']) 
-def delete_entry():   
+@app.route('/delete/<int:n>',methods=['POST']) 
+def delete_entry(n):   
     db = get_db()
-    cur = db.execute('select title,text,time,etime,score,username from entries order by id desc')
+    cur = db.execute('select title,text,time,etime,score,username,forum from entries order by id desc')
     entries = cur.fetchall()
   
     for entry in entries:
         if request.form['delete'] == entry['etime']:
                 selected = entry
         
-    db.execute('insert into deleted (title,text,time,etime,score,username) values (?,?,?,?,?,?)',
-                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username']])
+    db.execute('insert into deleted (title,text,time,etime,score,username,forum) values (?,?,?,?,?,?,?)',
+                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username'],selected['forum']])
     db.execute('delete from entries where etime == (?)',[selected['etime']])
     db.commit()
     flash('Entry was successfully deleted')      
-    return redirect(url_for('show_entries'))    # return to entries page
+    return redirect(url_for('show_entries',n=n))    # return to entries page
  
 # restore deleted posts
 @app.route('/forum_restore',methods=['POST']) 
 def restore_post():   
     db = get_db()
-    cur = db.execute('select title,text,time,etime,score,username from deleted order by id desc')
+    cur = db.execute('select title,text,time,etime,score,username,forum from deleted order by id desc')
     entries = cur.fetchall()
   
     for entry in entries:
         if request.form['post'] == entry['etime']:
                 selected = entry
         
-    db.execute('insert into entries (title,text,time,etime,score,username) values (?,?,?,?,?,?)',
-                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username']])
+    db.execute('insert into entries (title,text,time,etime,score,username,forum) values (?,?,?,?,?,?,?)',
+                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username'],selected['forum']])
     db.execute('delete from deleted where etime == (?)',[selected['etime']])
     db.commit()
     flash('Entry was successfully restored to forum')      
@@ -375,15 +403,15 @@ def restore_post():
 @app.route('/staged_restore',methods=['POST'])   
 def restore_staged():  
     db = get_db()
-    cur = db.execute('select title,text,time,etime,score,username from deleted order by id desc')
+    cur = db.execute('select title,text,time,etime,score,username,forum from deleted order by id desc')
     entries = cur.fetchall()
   
     for entry in entries:
         if request.form['stage'] == entry['etime']:
                 selected = entry
         
-    db.execute('insert into staged (title,text,time,etime,score,username) values (?,?,?,?,?,?)',
-                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username']])
+    db.execute('insert into staged (title,text,time,etime,score,username,forum) values (?,?,?,?,?,?,?)',
+                [selected['title'],selected['text'],selected['time'],selected['etime'],selected['score'],selected['username'],selected['forum']])
     db.execute('delete from deleted where etime == (?)',[selected['etime']])
     db.commit()
     flash('Entry was successfully restored to staging')      
@@ -391,8 +419,10 @@ def restore_staged():
     
 #========== Dev/testing ==========================================================
 
-       
-#===============================================================================
+
+#=================================================================================
+#            Run app
+#=================================================================================
 
 # set the secret key. Keep it safe. Keep it secret.
 app.secret_key = '_~q\xf4c\x88\x1b\x0fPi\x88\x9dj?Ofj\x8f\xee\xa4\xcb\x9a\xe9U'

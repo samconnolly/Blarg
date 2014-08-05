@@ -6,6 +6,7 @@
 
 <h1>Score Board</h1>
 
+<h2> Overall <h2>
 {% for score in scores %}
 {% if session.username == score[0]  %}
 <li><h1>{{score[0]}} - {{score[1]}} point(s)</h1>
@@ -15,6 +16,25 @@
 
 {% else %}
 <li><em> No Teams </em>
+{% endfor %}
+
+
+<h2> Science <h2>
+{% for score in sscores %}
+{% if session.username == score[0]  %}
+<li><h1>{{score[0]}} - {{score[1]}} point(s)</h1>
+{% else %}
+<li><h2>{{score[0]}} - {{score[1]}} point(s)</h2>
+{% endif %}
+{% endfor %}
+
+<h2> Media <h2>
+{% for score in mscores %}
+{% if session.username == score[0]  %}
+<li><h1>{{score[0]}} - {{score[1]}} point(s)</h1>
+{% else %}
+<li><h2>{{score[0]}} - {{score[1]}} point(s)</h2>
+{% endif %}
 {% endfor %}
 
 </ul>

@@ -1,9 +1,13 @@
 <! The main page, showing the blog entries >
 {% extends "layout.html" %}
 {% block body %}
-
+{% if n < 6 %}
+<h1>Science Forum Day {{ n }}</h1>
+{% else %}
+<h1>Media Forum Day {{ n - 5 }}</h1>
+{% endif %}
 {% if session.logged_in %}
-<form action="{{ url_for('add_entry') }}" method=post class=add-entry>
+<form action="{{ url_for('add_entry',n=n) }}" method=post class=add-entry>
 <dl>
 <dt>Title:
 <dd><input type=text size=30 name=title>
@@ -16,15 +20,17 @@
 <ul class=entries>
 
 {% for entry in entries %}
+{% if entry.forum == n %}
 <li><h2>{{entry.username}}: {{ entry.title }} - {{entry.score}} point(s)</h2>
 <h3  name=time>{{ entry.time }}</h3>
 <br>{{ entry.text|safe }}
 
 {% if session.admin == True and session.logged_in %}
-<form action="{{ url_for('delete_entry') }}"  method=post class=delete-entry>
+<form action="{{ url_for('delete_entry',n=n) }}"  method=post class=delete-entry>
 <br><button type="submit" value={{entry.etime}} name="delete">Delete</button>
 </form>
 
+{% endif %}
 {% endif %}
 {% else %}
 <li><em> No entries here so far</em>

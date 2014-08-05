@@ -13,13 +13,12 @@ Username: {{session.username}}
 {% endif %}
 <br><a href="{{ url_for('home') }}">Home</a>
 <br><a href="{{ url_for('scoreboard') }}">Score Board</a>
-<br><a href="{{ url_for('show_entries') }}">Forum</a>
-
+<br><a href="{{ url_for('show_entries',n=1) }}">Forum</a>
 {% if session.admin == True and session.logged_in %}
 <br><br>Logged in as admin
 <br><a href="{{ url_for('show_accounts') }}">Accounts</a>
 <br><a href="{{ url_for('stage_entries') }}">Staged Entries</a>
-<br><a href="{{ url_for('show_entries') }}">Published Entries</a>
+<br><a href="{{ url_for('deleted_entries') }}">Deleted Entries</a>
 {% endif %}
 </div>
 {% for message in get_flashed_messages() %}

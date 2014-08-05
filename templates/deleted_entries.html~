@@ -2,20 +2,21 @@
 {% extends "layout.html" %}
 {% block body %}
 
-
+<h1> Deleted Entries </h1>
 <ul class=entries>
 
 {% for entry in entries %}
 <li><h2>{{entry.username}}: {{ entry.title }} - {{entry.score}} point(s)</h2>
 <h3  name=time>{{ entry.time }}</h3>
+<h3>Forum {{ entry.forum }}</h3>
 <br>{{ entry.text|safe }}
 
 {% if session.admin == True and session.logged_in %}
-<form action="{{ url_for('restore_staged') }}"  method=get class=delete-entry>
+<form action="{{ url_for('restore_staged') }}"  method=post class=delete-entry>
 <br><button type="submit" value={{entry.etime}} name="stage">Restore to staged</button>
 </form>
 
-<form action="{{ url_for('restore_post') }}"  method=get class=delete-entry>
+<form action="{{ url_for('restore_post') }}"  method=post class=delete-entry>
 <br><button type="submit" value={{entry.etime}} name="post">Restore to forum</button>
 </form>
 

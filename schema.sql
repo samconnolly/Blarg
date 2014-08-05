@@ -7,7 +7,8 @@ create table entries(
     etime text not null,
     text text not null,
     score integer not null,
-    username text not null
+    username text not null,
+    forum integer not null
 );
 
 create table staged(
@@ -17,7 +18,8 @@ create table staged(
     etime text not null,
     text text not null,
     score integer not null,
-    username text not null
+    username text not null,
+    forum integer not null
 );
 
 create table deleted(
@@ -27,7 +29,8 @@ create table deleted(
     etime text not null,
     text text not null,
     score integer not null,
-    username text not null
+    username text not null,
+    forum integer not null
 );
 create table accounts(
     id integer primary key autoincrement,
